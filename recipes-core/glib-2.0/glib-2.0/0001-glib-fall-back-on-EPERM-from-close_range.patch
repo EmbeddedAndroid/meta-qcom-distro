@@ -1,0 +1,45 @@
+From: Tyler Baker <tyler@foundries.io>
+Date: Thu, 21 May 2026 16:00:00 -0400
+Subject: [PATCH] glib-unix: fall back to safe_fdwalk when close_range
+ returns EPERM
+
+g_closefrom() and g_fdwalk_set_cloexec() call close_range() and only
+fall back to the per-fd safe_fdwalk loop when close_range() returns
+ENOSYS (and EINVAL for the CLOSE_RANGE_CLOEXEC variant). Container
+seccomp profiles that block close_range typically return EPERM, not
+ENOSYS, so the fallback never fires and every g_spawn user
+(glib-compile-resources, dbus-binding-tool, gdbus-codegen,
+g-ir-scanner, ...) breaks with:
+
+    Failed to close file descriptor for child process
+    (Operation not permitted)
+
+Add EPERM to the set of errnos that trigger the fallback so glib works
+inside restricted containers without needing the host's seccomp profile
+loosened.
+
+Upstream-Status: Inappropriate [workaround for restricted container
+ seccomp; the right fix is to relax the container profile to allow
+ close_range, but this patch keeps glib working until that lands]
+
+Signed-off-by: Tyler Baker <tyler@foundries.io>
+--- a/glib/glib-unix.c	2026-05-21 16:48:15.360343109 -0400
++++ b/glib/glib-unix.c	2026-05-21 16:48:15.368343152 -0400
+@@ -850,7 +850,7 @@
+    * fall back to safe_fdwalk(). Handle EINVAL in case `CLOSE_RANGE_CLOEXEC`
+    * is not supported. */
+   ret = close_range (lowfd, G_MAXUINT, CLOSE_RANGE_CLOEXEC);
+-  if (ret == 0 || !(errno == ENOSYS || errno == EINVAL))
++  if (ret == 0 || !(errno == ENOSYS || errno == EINVAL || errno == EPERM))
+     return ret;
+ #endif  /* HAVE_CLOSE_RANGE */
+ 
+@@ -897,7 +897,7 @@
+    * Handle ENOSYS in case it’s supported in libc but not the kernel; if so,
+    * fall back to safe_fdwalk(). */
+   ret = close_range (lowfd, G_MAXUINT, 0);
+-  if (ret == 0 || errno != ENOSYS)
++  if (ret == 0 || (errno != ENOSYS && errno != EPERM))
+     return ret;
+ #endif  /* HAVE_CLOSE_RANGE */
+ 
