@@ -14,5 +14,5 @@
 # Tracked with Foundries support as a worker-resourcing issue;
 # revert once the worker has headroom (or once go upstream
 # improves its stdlib-build memory footprint).
-PARALLEL_MAKE = "-j 4"
-PARALLEL_MAKEINST = "-j 4"
+PARALLEL_MAKE = "-j 2"
+PARALLEL_MAKEINST = "-j 2"

@@ -10,5 +10,5 @@
 # Tracked with Foundries support as a worker-resourcing issue
 # (FOUNDRIES_PARTNER_AWS_WORKER_OOM_ASK.md in this project);
 # revert once the worker has headroom.
-PARALLEL_MAKE = "-j 4"
-PARALLEL_MAKEINST = "-j 4"
+PARALLEL_MAKE = "-j 2"
+PARALLEL_MAKEINST = "-j 2"
